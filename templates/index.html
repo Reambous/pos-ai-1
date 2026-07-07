@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SmartPOS-AI Dashboard</title>
+    <!-- Tailwind CSS untuk Desain Premium & Cepat -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Alpine.js untuk Logika Deklaratif Super Ringan -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Google Font Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+      }
+    </style>
+  </head>
+  <body class="bg-slate-50 text-slate-800" x-data="posSystem()" x-init="init()">
+    <div class="flex h-screen overflow-hidden">
+      <!-- ================= PANEL UTAMA KASIR (KIRI) ================= -->
+      <div class="flex-1 flex flex-col h-full overflow-hidden p-6">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+          <div>
+            <h1 class="text-2xl font-bold text-slate-900 tracking-tight">SmartPOS-AI</h1>
+            <p class="text-xs text-slate-500">Sistem Kasir & Analisis Bisnis berbasis AI</p>
+          </div>
+          <div class="bg-emerald-50 text-emerald-700 text-xs px-2.5 py-1 rounded-full font-medium border border-emerald-200">🟢 Server Online</div>
+        </div>
+
+        <!-- Grid Produk -->
+        <div class="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-3 gap-4 pr-2">
+          <template x-for="product in products" :key="product.id">
+            <div class="bg-white p-4 rounded-xl shadow-xs border border-slate-200 flex flex-col justify-between hover:border-indigo-300 transition-all cursor-pointer" @click="addToCart(product)">
+              <div>
+                <div class="flex justify-between items-start gap-2">
+                  <h3 class="font-semibold text-slate-900 leading-snug" x-text="product.name"></h3>
+                  <span class="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded font-mono" x-text="product.sku"></span>
+                </div>
+                <span class="text-xs text-slate-400 mt-1 block" x-text="'AI Tags: ' + (product.ai_tags || '-')"></span>
+              </div>
+              <div class="flex justify-between items-center mt-4">
+                <span class="text-indigo-600 font-bold" x-text="formatRupiah(product.price)"></span>
+                <span
+                  :class="product.stock < 15 ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-50 text-slate-600 border-slate-200'"
+                  class="text-[11px] px-2 py-0.5 rounded-full font-medium border"
+                  x-text="'Stok: ' + product.stock"
+                ></span>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- Ringkasan Keranjang Belanja -->
+        <div class="mt-6 bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+          <h3 class="font-bold text-slate-900 mb-2 flex items-center gap-2">🛒 Keranjang Belanja</h3>
+          <div class="max-h-32 overflow-y-auto divide-y divide-slate-100 text-sm">
+            <template x-for="item in cart" :key="item.product_id">
+              <div class="flex justify-between py-2 items-center">
+                <span class="font-medium text-slate-800" x-text="item.name"></span>
+                <div class="flex items-center gap-4">
+                  <span class="text-slate-500" x-text="item.quantity + 'x'"></span>
+                  <span class="font-semibold text-slate-900" x-text="formatRupiah(item.price * item.quantity)"></span>
+                  <button @click.stop="removeFromCart(item.product_id)" class="text-rose-500 hover:text-rose-700 font-medium text-xs">Hapus</button>
+                </div>
+              </div>
+            </template>
+            <template x-if="cart.length === 0">
+              <p class="text-slate-400 text-xs py-2 text-center">Keranjang masih kosong. Klik produk di atas.</p>
+            </template>
+          </div>
+
+          <div class="border-t border-slate-100 pt-4 mt-2 flex justify-between items-center">
+            <div>
+              <span class="text-xs text-slate-400 block">Total Pembayaran</span>
+              <span class="text-xl font-bold text-slate-900" x-text="formatRupiah(calculateTotal())"></span>
+            </div>
+            <div class="flex gap-2">
+              <select x-model="paymentMethod" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:border-indigo-500">
+                <option value="tunai">💵 Tunai</option>
+                <option value="qris">📱 QRIS</option>
+                <option value="e_wallet">💳 E-Wallet</option>
+              </select>
+              <button @click="checkout()" :disabled="cart.length === 0" class="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-semibold text-sm px-5 py-2 rounded-lg transition-colors cursor-pointer shadow-xs">
+                Proses Bayar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= PANEL RAG AI ASSISTANT (KANAN) ================= -->
+      <div class="w-96 bg-slate-900 text-white h-full flex flex-col border-l border-slate-800 shadow-xl">
+        <!-- AI Header -->
+        <div class="p-4 bg-slate-950 border-b border-slate-800 flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center font-bold text-sm text-white shadow-inner animate-pulse">✨</div>
+          <div>
+            <h2 class="font-bold text-sm text-slate-100">AI Business Consultant</h2>
+            <p class="text-[10px] text-indigo-400 font-medium">Connected to Store Database (RAG)</p>
+          </div>
+        </div>
+
+        <!-- Ruang Obrolan Chat -->
+        <div class="flex-1 overflow-y-auto p-4 space-y-4" id="chat-box">
+          <template x-for="msg in chatHistory">
+            <div :class="msg.role === 'user' ? 'justify-end' : 'justify-start'" class="flex">
+              <div
+                :class="msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-200 border border-slate-700'"
+                class="max-w-[85%] rounded-2xl px-4 py-2.5 text-xs shadow-xs leading-relaxed whitespace-pre-line"
+                x-text="msg.text"
+              ></div>
+            </div>
+          </template>
+          <!-- Indikator Mengetik saat AI streaming -->
+          <div x-show="isAiTyping" class="flex justify-start">
+            <div class="bg-slate-800 border border-slate-700 text-slate-400 rounded-2xl px-4 py-2.5 text-xs italic">AI sedang menganalisis data toko...</div>
+          </div>
+        </div>
+
+        <!-- Input Form Chat -->
+        <form @submit.prevent="sendAiMessage()" class="p-4 bg-slate-950 border-t border-slate-800 flex gap-2">
+          <input
+            type="text"
+            x-model="aiQuery"
+            placeholder="Tanya AI tentang bisnis toko Anda..."
+            class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+            :disabled="isAiTyping"
+          />
+          <button type="submit" :disabled="isAiTyping || !aiQuery.trim()" class="bg-indigo-500 hover:bg-indigo-600 disabled:bg-slate-700 text-white font-semibold text-xs px-4 py-2 rounded-lg transition-colors cursor-pointer shadow-xs">
+            Kirim
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ================= LOGIKA UTAMA JAVASCRIPT (ALPINE.JS) ================= -->
+    <script>
+      function posSystem() {
+        return {
+          products: [],
+          cart: [],
+          paymentMethod: "tunai",
+          aiQuery: "",
+          chatHistory: [{ role: "assistant", text: "Halo Bos! Saya asisten pintar toko Anda. Saya terhubung langsung ke database. Silakan tanya apa saja seputar stok barang atau transaksi penjualan." }],
+          isAiTyping: false,
+
+          async init() {
+            await this.fetchProducts();
+          },
+
+          // Mengambil produk dari API Backend
+          async fetchProducts() {
+            try {
+              const res = await fetch("/api/v1/products");
+              this.products = await res.json();
+            } catch (err) {
+              console.error("Gagal mengambil produk:", err);
+            }
+          },
+
+          // Operasional Keranjang Belanja
+          addToCart(product) {
+            let existing = this.cart.find((item) => item.product_id === product.id);
+            if (existing) {
+              if (existing.quantity < product.stock) existing.quantity++;
+            } else {
+              this.cart.push({
+                product_id: product.id,
+                name: product.name,
+                price: product.price,
+                quantity: 1,
+              });
+            }
+          },
+
+          removeFromCart(productId) {
+            this.cart = this.cart.filter((item) => item.product_id !== productId);
+          },
+
+          calculateTotal() {
+            return this.cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+          },
+
+          // Eksekusi Transaksi ke API
+          async checkout() {
+            if (this.cart.length === 0) return;
+
+            const payload = {
+              payment_method: this.paymentMethod,
+              items: this.cart.map((item) => ({ product_id: item.product_id, quantity: item.quantity })),
+            };
+
+            try {
+              const res = await fetch("/api/v1/transactions", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+              });
+
+              const data = await res.json();
+              if (res.ok) {
+                alert(`🎉 Transaksi Sukses!\nNota: ${data.invoice_number}\nTotal: ${this.formatRupiah(data.total_pembayaran)}`);
+                this.cart = [];
+                await this.fetchProducts(); // Refresh stok barang di UI
+              } else {
+                alert("Gagal memproses transaksi: " + data.detail);
+              }
+            } catch (err) {
+              alert("Terjadi kesalahan koneksi server.");
+            }
+          },
+
+          async sendAiMessage() {
+            if (!this.aiQuery.trim() || this.isAiTyping) return;
+
+            const userText = this.aiQuery;
+            this.chatHistory.push({ role: "user", text: userText });
+            this.aiQuery = "";
+            this.isAiTyping = true;
+
+            // Masukkan wadah respons kosong ke dalam array history
+            this.chatHistory.push({ role: "assistant", text: "" });
+            const targetIndex = this.chatHistory.length - 1;
+            this.scrollToBottom();
+
+            try {
+              const response = await fetch("/api/v1/ai/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ query: userText }),
+              });
+
+              const reader = response.body.getReader();
+              const decoder = new TextDecoder("utf-8");
+              let lineBuffer = "";
+
+              while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+
+                lineBuffer += decoder.decode(value, { stream: true });
+                let parts = lineBuffer.split("\n\n");
+                lineBuffer = parts.pop();
+
+                for (let part of parts) {
+                  let cleanLine = part.trim();
+                  if (cleanLine.startsWith("data: ")) {
+                    let jsonStr = cleanLine.substring(6).trim();
+                    if (!jsonStr) continue;
+
+                    try {
+                      let parsed = JSON.parse(jsonStr);
+                      if (parsed.text) {
+                        // PENTING: Akses langsung indeks array-nya agar Alpine.js
+                        // terpaksa melakukan render ulang ke layar secara real-time!
+                        this.chatHistory[targetIndex].text += parsed.text;
+                      }
+                      this.scrollToBottom();
+                    } catch (e) {
+                      // Abaikan error fragmentasi JSON
+                    }
+                  }
+                }
+              }
+            } catch (err) {
+              this.chatHistory[targetIndex].text = "Gagal terhubung ke server AI.";
+            } finally {
+              this.isAiTyping = false;
+              this.scrollToBottom();
+            }
+          },
+
+          // Utilitas Tambahan
+          formatRupiah(num) {
+            return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(num);
+          },
+          scrollToBottom() {
+            setTimeout(() => {
+              const cb = document.getElementById("chat-box");
+              if (cb) cb.scrollTop = cb.scrollHeight;
+            }, 50);
+          },
+        };
+      }
+    </script>
+  </body>
+</html>
