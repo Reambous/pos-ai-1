@@ -44,36 +44,4 @@ UI yang ringkas dengan panel kasir di sisi kiri dan panel AI Business Consultant
 
 ## Screenshot
 
-![SmartPOS-AI Dashboard](screenshot.png)
-
-> Tampilan dashboard SmartPOS-AI dengan panel kasir (kiri) dan AI Business Consultant (kanan).
-
----
-
-## Cara Menjalankan
-
-```bash
-# 1. Clone repositori
-git clone <repo-url>
-cd pos1
-
-# 2. Buat virtual environment (opsional)
-python -m venv venv
-venv\Scripts\activate  # Windows
-# source venv/bin/activate  # Linux/Mac
-
-# 3. Instal dependensi
-pip install fastapi uvicorn sqlalchemy python-dotenv pydantic google-genai
-
-# 4. Atur API Key
-# Edit file .env dan isi GEMINI_API_KEY dengan kunci Anda
-
-# 5. Seed database (hanya sekali)
-python seed.py
-
-# 6. Jalankan server
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-
-# 7. Buka browser
-# http://localhost:8000
-```
+<img width="1916" height="1031" alt="image" src="https://github.com/user-attachments/assets/8324e540-d929-4c81-bae6-ea0a4ea02bae" />
